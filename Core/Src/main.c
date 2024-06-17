@@ -36,8 +36,10 @@
 #include <stdlib.h>
 #include "sys.h"
 #include "delay.h"
-#include "AD2S1210.h"
-#include "DRV8301.h"
+//#include "AD2S1210.h"
+//#include "DRV8301.h"
+#include "currloop.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -99,6 +101,9 @@ uint8_t RxData[8]={NULL};
 uint8_t TxData[8] = {NULL};
 float CANtemp[1];
 
+extern ExtU rtU;
+extern ExtY rtY;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -155,39 +160,41 @@ int main(void)
   MX_DAC3_Init();
   MX_DAC1_Init();
   MX_FDCAN1_Init();
+  MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
 	delay_init(160);	
-	
+//  HAL_GPIO_WritePin(EN_GATE_GPIO_Port, EN_GATE_Pin, GPIO_PIN_SET);//高电平
+
 	/* AD2S1210 */
-	AD2S1210Initiate(); // 上电时序控制和复位
-	
-  CLR_SOE();
-  SET_RD(); // 串口通信需将RD拉高
-	
-	AD2S1210SelectMode(CONFIG); // 进入配置模式，对寄存器进行编程，以设置AD2S1210的激励频率、分辨率和故障检测阈值
-	
-	/* 检查读写功能是否正常 */
-  WriteToAD2S1210(CONTROL, 0x7A); //默认0x7E
-  ReadFromAD2S1210(CONFIG, CONTROL, buf);
+//	AD2S1210Initiate(); // 上电时序控制和复位
+//	
+//  CLR_SOE();
+//  SET_RD(); // 串口通信需将RD拉高
+//	
+//	AD2S1210SelectMode(CONFIG); // 进入配置模式，对寄存器进行编程，以设置AD2S1210的激励频率、分辨率和故障检测阈值
+//	
+//	/* 检查读写功能是否正常 */
+//  WriteToAD2S1210(CONTROL, 0x7A); //默认0x7E
+//  ReadFromAD2S1210(CONFIG, CONTROL, buf);
 	
 	/* DRV8301 */	
-  DRV8301Cfg cfg = {
-			.GATE_CURRENT = CURRENT0_7A,//","
-			.GATE_RESET = GATE_RST_NORMAL,
-			.PWM_MODE = PHASE6PWM,
-			.OCP_MODE = OCLATCHSTDOWN,
-			.OC_ADJ_SET = 18,
-			.OCTW_MODE = OCOTBOTH,
-			.GAINVALUE = GAIN10,
-			.DC_CAL_CH1 = CONNECTLOADPH1,
-			.DC_CAL_CH2 = CONNECTLOADPH2,
-			.OC_TOFF = CYCLEBYCYCLE//没有","
-	};
-	spi3init();
-	//delay_ms(30000);
-	DRV8301Init(cfg);
-	uint16_t id = DRV8301IDread();
-	printf("ID = %d\r\n", id);
+//  DRV8301Cfg cfg = {
+//			.GATE_CURRENT = CURRENT0_7A,//","
+//			.GATE_RESET = GATE_RST_NORMAL,
+//			.PWM_MODE = PHASE6PWM,
+//			.OCP_MODE = OCLATCHSTDOWN,
+//			.OC_ADJ_SET = 18,
+//			.OCTW_MODE = OCOTBOTH,
+//			.GAINVALUE = GAIN10,
+//			.DC_CAL_CH1 = CONNECTLOADPH1,
+//			.DC_CAL_CH2 = CONNECTLOADPH2,
+//			.OC_TOFF = CYCLEBYCYCLE//没有","
+//	};
+//	spi3init();
+//	//delay_ms(30000);
+//	DRV8301Init(cfg);
+//	uint16_t id = DRV8301IDread();
+//	printf("ID = %d\r\n", id);
 	
 	/* Vbus */
 //	HAL_UART_Receive_IT(&huart1, (uint8_t *)&aRxBuffer, 1);
@@ -198,9 +205,14 @@ int main(void)
 	HAL_OPAMP_Start(&hopamp1);
 	HAL_OPAMP_Start(&hopamp2);
 	HAL_OPAMP_Start(&hopamp3);
-	HAL_UART_Receive_IT(&huart1, (uint8_t *)&aRxBuffer, 1); //?
+//	HAL_UART_Receive_IT(&huart1, (uint8_t *)&aRxBuffer, 1); //?
 	HAL_ADCEx_Calibration_Start( &hadc1, ADC_SINGLE_ENDED);
 	HAL_ADCEx_Calibration_Start( &hadc2, ADC_SINGLE_ENDED);
+	__HAL_ADC_CLEAR_FLAG( &hadc1, ADC_FLAG_JEOC);
+	__HAL_ADC_CLEAR_FLAG( &hadc1, ADC_FLAG_EOC);
+	__HAL_ADC_CLEAR_FLAG( &hadc2, ADC_FLAG_JEOC);
+		HAL_ADCEx_InjectedStart_IT(&hadc1);
+	HAL_ADCEx_InjectedStart(&hadc2);
 	
 	/* PWM */
 //	TIM1->PSC = 30000;
@@ -213,24 +225,20 @@ int main(void)
 //	TIM1->PSC = 30000;
 	TIM1->ARR = 8000 - 1;
 	TIM1->CCR4 = 8000 - 2;
-	TIM1->CCR1 = 2000;
-	TIM1->CCR2 = 4000;
-	TIM1->CCR3 = 6000;
+//	TIM1->CCR1 = 2000;
+//	TIM1->CCR2 = 4000;
+//	TIM1->CCR3 = 6000;
 	
 	HAL_TIM_Base_Start( &htim1);
+	HAL_TIM_PWM_Start( &htim1, TIM_CHANNEL_4);
+
+  rtU.Motor_OnOff = 1;
 	HAL_TIM_PWM_Start( &htim1, TIM_CHANNEL_1);
 	HAL_TIM_PWM_Start( &htim1, TIM_CHANNEL_2);
 	HAL_TIM_PWM_Start( &htim1, TIM_CHANNEL_3);
 	HAL_TIMEx_PWMN_Start( &htim1, TIM_CHANNEL_1);
 	HAL_TIMEx_PWMN_Start( &htim1, TIM_CHANNEL_2);
 	HAL_TIMEx_PWMN_Start( &htim1, TIM_CHANNEL_3);
-	
-	__HAL_ADC_CLEAR_FLAG( &hadc1, ADC_FLAG_JEOC);
-	__HAL_ADC_CLEAR_FLAG( &hadc1, ADC_FLAG_EOC);
-	__HAL_ADC_CLEAR_FLAG( &hadc2, ADC_FLAG_JEOC);
-	HAL_TIM_PWM_Start( &htim1, TIM_CHANNEL_4);
-	HAL_ADCEx_InjectedStart_IT(&hadc1);
-	HAL_ADCEx_InjectedStart(&hadc2);
 	
 //	HAL_DAC_Start(&hdac3,DAC_CHANNEL_1);
 //	HAL_DAC_Start(&hdac1,DAC_CHANNEL_1);
@@ -239,7 +247,6 @@ int main(void)
 	
 	/* can */
 //	FDCAN_Config();
-
 
   /* USER CODE END 2 */
 
@@ -320,6 +327,8 @@ int main(void)
 		HAL_ADC_Start(&hadc1);
 		HAL_ADC_Start(&hadc2);
 		adc_vbus = HAL_ADC_GetValue(&hadc2);
+		rtU.v_bus = adc_vbus*3.3f/4096*26;
+
 		Vbus = adc_vbus*3.3f/4096*26;
     load_data[3] = Vbus;
 //		memcpy(tempData, (uint8_t *)&load_data, sizeof(load_data));
@@ -394,9 +403,10 @@ void SystemClock_Config(void)
   }
   /** Initializes the peripherals clocks
   */
-  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART1|RCC_PERIPHCLK_ADC12
-                              |RCC_PERIPHCLK_FDCAN;
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART1|RCC_PERIPHCLK_USART3
+                              |RCC_PERIPHCLK_ADC12|RCC_PERIPHCLK_FDCAN;
   PeriphClkInit.Usart1ClockSelection = RCC_USART1CLKSOURCE_PCLK2;
+  PeriphClkInit.Usart3ClockSelection = RCC_USART3CLKSOURCE_PCLK1;
   PeriphClkInit.FdcanClockSelection = RCC_FDCANCLKSOURCE_PCLK1;
   PeriphClkInit.Adc12ClockSelection = RCC_ADC12CLKSOURCE_SYSCLK;
   if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
@@ -423,6 +433,7 @@ int fgetc(FILE *f)
 void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc)
 {
 	static uint8_t cnt;
+	static uint16_t obsever_cnt;
   /* Prevent unused argument(s) compilation warning */
   UNUSED(hadc);
 	if(hadc == &hadc1)
@@ -447,17 +458,31 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc)
 		else
 		{
 			adc1_in1 = hadc1.Instance->JDR1;
-			Ia = (adc1_in1 - IA_Offset)*0.0193359375f;
-			adc1_in2 = hadc2.Instance->JDR1;
-			Ib = (adc1_in2 - IB_Offset)*0.0193359375f;
 			adc1_in3 = hadc1.Instance->JDR2;
-			Ic = (adc1_in3 - IC_Offset)*0.0193359375f;
+			adc1_in2 = hadc2.Instance->JDR1;
+			
+			rtU.ia = (adc1_in1 - IA_Offset)*0.10986328125f;// 控制板V2.1的ADC到电流换算增益为0.10986328125
+			rtU.ib = (adc1_in2 - IB_Offset)*0.10986328125f;
+			rtU.ic = (adc1_in3 - IC_Offset)*0.10986328125f;
+			currloop_step();
+			
+			TIM1->CCR1 = rtY.tABC[0];
+			TIM1->CCR2 = rtY.tABC[1];
+			TIM1->CCR3 = rtY.tABC[2];
+			
+//			adc1_in1 = hadc1.Instance->JDR1;
+//			Ia = (adc1_in1 - IA_Offset)*0.0193359375f;
+//			adc1_in2 = hadc2.Instance->JDR1;
+//			Ib = (adc1_in2 - IB_Offset)*0.0193359375f;
+//			adc1_in3 = hadc1.Instance->JDR2;
+//			Ic = (adc1_in3 - IC_Offset)*0.0193359375f;
 //			TIM1->CCR1 = 2000;
 //			TIM1->CCR2 = 4000;
 //			TIM1->CCR3 = 6000;
-			load_data[4] = Ia;
-			load_data[5] = Ib;
-			load_data[6] = Ic;
+
+			load_data[4] = rtU.ia;
+			load_data[5] = rtU.ib;
+			load_data[6] = rtU.ic;
 
 			memcpy(tempData, (uint8_t *)&load_data, sizeof(load_data));
 			HAL_UART_Transmit_DMA(&huart1,(uint8_t *)tempData,8*4);

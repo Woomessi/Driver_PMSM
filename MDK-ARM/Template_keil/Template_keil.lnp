@@ -1,9 +1,7 @@
 --cpu=Cortex-M4.fp.sp
 "template_keil\startup_stm32g474xx.o"
 "template_keil\delay.o"
-"template_keil\ad2s1210.o"
 "template_keil\sys.o"
-"template_keil\drv8301.o"
 "template_keil\main.o"
 "template_keil\gpio.o"
 "template_keil\adc.o"
@@ -43,7 +41,10 @@
 "template_keil\stm32g4xx_hal_uart.o"
 "template_keil\stm32g4xx_hal_uart_ex.o"
 "template_keil\system_stm32g4xx.o"
---library_type=microlib --strict --scatter "Template_keil\Template_keil.sct"
+"..\Middlewares\ST\ARM\DSP\Lib\arm_cortexM4lf_math.lib"
+"../Middlewares/ST/ARM/DSP/Lib/arm_cortexM4l_math.lib"
+"template_keil\currloop.o"
+--strict --scatter "Template_keil\Template_keil.sct"
 --summary_stderr --info summarysizes --map --load_addr_map_info --xref --callgraph --symbols
 --info sizes --info totals --info unused --info veneers
 --list "Template_keil.map" -o Template_keil\Template_keil.axf

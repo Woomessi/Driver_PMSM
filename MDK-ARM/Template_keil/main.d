@@ -57,5 +57,7 @@ template_keil\main.o: C:\Keil_v5\ARM\ARM_Compiler_5.06u7\Bin\..\include\stdlib.h
 template_keil\main.o: ../Core/Inc/sys.h
 template_keil\main.o: ../Drivers/CMSIS/Include/core_cm4.h
 template_keil\main.o: ../Core/Inc/delay.h
-template_keil\main.o: ../Core/Inc/AD2S1210.h
-template_keil\main.o: ../Core/Inc/DRV8301.h
+template_keil\main.o: ..\MATLAB\currloop.h
+template_keil\main.o: C:\Keil_v5\ARM\ARM_Compiler_5.06u7\Bin\..\include\float.h
+template_keil\main.o: C:\Keil_v5\ARM\ARM_Compiler_5.06u7\Bin\..\include\math.h
+template_keil\main.o: ..\MATLAB\rtwtypes.h
